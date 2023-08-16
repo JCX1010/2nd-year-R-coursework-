@@ -1,0 +1,227 @@
+---
+title: "Investigation of potential factors affecting birthweight"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+Births <- read.table("BirthTrain.txt",header = TRUE)
+Birth_test <- read.table("BirthTest.txt",header = TRUE)
+```
+
+# Introduction
+
+The purpose of this report is to investigate associations between birthweight of child and six other various potential explanatory variables. Throughout the report, we will build, refine and validate a linear model before using it to later predict the birthweight of 100 individuals from a given test set. In our findings, we concluded that the sex of the child and how often the mother smoked had an insignificant association to birthweight of child whilst conversely, the other explanatory variables which are outlined in exploratory analysis were found to be significant.
+
+# Exploratory analysis
+
+The data set consists of 327 children regarding their birthweight along with the following 6 variables: age of mother; gestation period; sex of child; smoke level during preganacy (levels: 'No','light' and 'heavy') ; pre-pregnancy weight of mother; rate of growth of child in the first trimester.
+
+Clearly, the variables 'smoke' and 'sex' should be treated as factors and the remaining as numerical variables.
+
+```{r,echo=FALSE}
+library(ggplot2)
+NewData <- Births
+NewData$age <- NewData$age
+NewData$gest <-NewData$gest
+NewData$sex <- factor(NewData$sex)
+NewData$smokes <- factor(NewData$smokes)
+NewData$weight <-NewData$weight
+NewData$rate <-NewData$rate
+NewData$bwt <-NewData$bwt
+```
+
+Below shows a matrix scatter plot to uncover the bivariate relationship between continuous variables.
+
+```{r, echo=FALSE,fig.cap="Figure 1: Matrix scatter plot showing pairwise relationship between each of the covariates.",fig.align='center'}
+plot(NewData[,c(1,2,5,6,7)])
+```
+
+Gestation period and pre-pregnancy weight of the mother are both positively correlated to birthweight of child which would highly suggest including these variables in the linear model would be appropriate. They have a correlation value of 0.54 and 0.27 respectively. There appears a lack of pairwise relationship between the remaining numerical variables (age and rate) against birthweight but later we'll find out they are significant when other potential explanatory variables are included. No obvious correlation between potential explanatory variables which would prompt us to further investigate if these should be included in the linear model which is explored under modeling section.
+
+We now consider the factor variables.
+
+```{r,fig.cap="Figure 2: Boxplots displaying the data structure of the factor variables against birthweight of child.",fig.align='center',echo=FALSE}
+par(mfrow=c(1,2))
+boxplot(NewData$bwt~NewData$sex,xlab="sex type",ylab = "Birthweight (grams)")
+boxplot(NewData$bwt~NewData$smokes,xlab = "smoke level" ,ylab="Birthweight (grams)")
+```
+
+The gender of the child does not seem to be influential to the birthweight readings as the structure of the boxplot regarding male and female are fairly symmetric. This suggests that including the variable 'sex' in the linear model will explain little on what is responsible on affecting birthweight and we'll see later in modeling that adding this variable increases the R-squared adjusted insignificantly implying its not necessary to include this extra complexity. The average birthweight of a child is very consistent regardless of how much the mother smokes. However, the plot also shows large variances when the mother doesn't smoke and thus care must be taken as there could be potential data points which are influential (i.e being a high average point and an outlier).
+
+# Modelling
+
+We can use the best subset regression method to find one possible model such that it would involve going through all possible regression models for each number of parameters and then use Mallow's Cp to determine which model to choose.
+
+```{r,echo=FALSE}
+library(leaps)
+b <- regsubsets(bwt~., data = NewData)
+summary.out <- summary(b)
+summary.out
+summary.out$cp
+```
+
+The model that is most appropriate is when Mallow's Cp value is approximately equal to the number of parameters in the given model. This means that the best subset regression would output the model which includes all the covariates with the exception that we would have the level 'light' removed from the smoke covariate factor. This agrees with the boxplot in exploratory data analysis (EDA) section as the body and whiskers were short implying birthweight for light smokers were very consistent which wouldn't alter the response much unlike the other 2 levels.
+
+We also construct another model manually to see if it can better explain the data set. Figure 1 indicates a strong positive correlation between gestation period and birthweight so we first the linear model of birthweight as response and have covariate 'gest' as the independent variable.
+
+```{r,echo = FALSE}
+fit1 <- lm(bwt ~ gest, data = NewData)
+summary(fit1)
+```
+
+This simple model has a R-squared value of 0.2918 and thus this covariate alone explains just under one third of the variation in the dependent variable which agrees with the mild positive correlation in the matrix scatter plot. Figure 1 also tells us that there exists a weak positive correlation between the pre-pregnancy weight of the mother and birthweight of the child. So including the 'weight' covariate, the linear model becomes
+
+```{r,echo = FALSE}
+fit2 <- lm(bwt ~ gest + weight , data = NewData)
+summary(fit2)
+anova(fit1,fit2)
+```
+
+The anova model is useful in comparing nested models has shown significant evidence at the 0.1% level that pre-preganacy weight plays an important role in the association to birthweight. This is further supported by an increase in the adjusted R-squared value from 0.2897 to 0.3254 which implies this current model explains roughly 3% more of the variation in the response compared to that in old model nested inside the new model.
+
+The remaining covariates namely age and rate (i.e. rate of growth of child in the first trimester) sees no correlation to birthweight in the scatterplot. However, we will still consider the model with each covariate added in in turn just to be sure and using F-test (but t-test also suitable due to one parameter difference in the nested models) gives the results below.
+
+```{r,echo = FALSE}
+fit3 <- lm(bwt ~ gest + weight+age , data = NewData)
+fit4 <- lm(bwt ~ gest + weight+rate , data = NewData)
+anova(fit2,fit3)
+anova(fit2,fit4)
+```
+
+Both tests showed that including age and rate in turn suggests evidence at the 5% and 1% level respectively that they had an association to birthweight. This highlights the importance that we shouldn't conclude a variable is insignificant too early when it was considered in isolation. So now we will include both these covariates into the new model.
+
+```{r,echo = FALSE}
+fit5 <- lm(bwt ~ gest + weight+age+rate , data = NewData)
+summary(fit5)
+```
+
+We would not expect including the covariate 'sex' in the linear model would help explain the data set since structure of the boxplots in figure 2 for both gender is almost symmetrical. The summary output below supports this notion as the adjusted R-squared value changes too little for this covariate to be deemed significant.
+
+```{r,echo = FALSE}
+fit6 <- lm(bwt ~ gest + weight+age+rate +sex, data = NewData)
+summary(fit6)
+```
+
+Similarly, an F-test to determine whether the factor variable smoke should be included.
+
+```{r,echo = FALSE}
+fit7 <- lm(bwt ~ gest + weight+age+rate+ smokes , data = NewData) 
+anova(fit5,fit7)
+```
+
+P-value is 0.2712, so we do not reject H0. No evidence to suggest that how often the mother smoked is associated with birthweight. This agrees with figure 2 such that average birthweight is very similar regardless of the smoking frequency of the mother.
+
+# Model diagnostics
+
+```{r,echo= FALSE,fig.cap = "Figure 3: QQ-plot and histogram of the residuals before the transformation" , fig.align='center'}
+library(car)
+par(mfrow=c(1,2))
+qqPlot(fit5)
+hist(rstudent(fit5))
+```
+
+The QQ-plot and the histogram of the residuals suggests a positive skew. We can reduce the skew by transforming the response variable down the ladder of powers.
+
+```{r,echo= FALSE,fig.cap = ,fig.cap = "Figure 4: QQ-plot and histogram of the residuals after the transformation" , fig.align='center'}
+fit8 <- lm(log(bwt) ~ gest + weight+age+rate , data = NewData)
+par(mfrow=c(1,2))
+qqPlot(fit8)
+hist(rstudent(fit8))
+```
+
+Figure 4 now shows the points in the QQ-plot lying closer to the straight line implying the data is now more closely normally distributed. The histogram also suggests that the errors are normally distributed which infers that this modeling assumption is valid. Now having transformed the linear model means that the data meets more closely to the assumptions of a statistical inference procedure, important for finding reliable conclusions from this model. Now checking the residual plots:
+
+```{r,echo=FALSE,fig.cap= "Figure 5: Pearson residual plot for each covariate and also the fitted values" , fig.align='center'}
+par(mfrow=c(3,2))
+library(car)
+residualPlots(fit8, tests = FALSE)
+```
+
+Figure 5 shows non-linearity between the response and the two covariates gest and weight. The relationship could also be non-monotonic so we can try fitting a quadratic model for these covariates to see whether the linear model can approximate the data set more accurately.
+
+```{r,echo=FALSE,fig.cap= "Figure 6: Pearson residual plot after adding higher order modelling terms" , fig.align='center'}
+fit9 <- lm(log(bwt) ~ gest +I(gest^2) + weight+ I(weight^2)+age +rate , data = NewData)
+residualPlots(fit9, tests = FALSE)
+```
+
+Figure 6 now shows that the line of best fit of the residuals is almost a horizontal line. This is an improvement from the previous model in figure 5 where we now have residuals that are more symmetrically distributed about 0 with no clear patterns of residuals. Note that these are still healthy diagnostic plots despite the data appearing to be unbalanced to the left side regarding the covariate weight and to the right side for fitted values.
+
+In figure 1, there were a few plots regarding the concerning covariates we have now in our model which lie relatively far away from the overall trend. This could suggest that we may have extreme data points in our data set which may alter the accuracy of the model and could violate our modeling assumptions.
+
+```{r,echo = FALSE,fig.cap= "Figure 7: Circle area is proportial to Cook's Distance" , fig.align='center'}
+par(mfrow=c(2,1))
+plot(fit8, which=1, col=c("blue")) # Residuals vs Fitted Plot
+influencePlot(fit9)
+```
+
+Figure 7 does not show any large Cook's distances which is generally considered to be greater than one. However, in comparison to other Cook's distances, the 133^rd^ observation appears to be significantly larger which would imply that it could potentially be a mildly-leveraged point. This is further supported in the upper plot of figure 7 where the residual for this observation shows a large residual relative to other data points implying a potential outlier. After removing this point, the new residual plots looks as follows.
+
+```{r,echo= FALSE}
+library(dplyr)
+NewData_minus_one <- Births
+NewData_minus_one <- NewData_minus_one[-c(133), ]
+```
+
+```{r,echo = FALSE,fig.cap= "Figure 8: A fitted residual plots showing the before and after of removing an observation", fig.align='center'}
+fit10 <- lm(log(bwt) ~ gest +I(gest^2) + weight+ I(weight^2)+age +rate , data = NewData_minus_one)
+par(mfrow=c(1,2))
+plot(fit8, which=1, col=c("blue"))
+plot(fit10, which=1, col=c("blue"))
+```
+
+Figure 8 now shows the changes in the line of best fit after removing the 133^rd^ observation. As we can see, the red line now follows more closely to a horizontal line suggesting now that the linearity assumption holds reasonably well.
+
+# Prediction
+
+## Model 1
+
+```{r,echo = FALSE}
+Model_one <- lm(log(bwt) ~ gest +I(gest^2) + weight+ I(weight^2)+age +rate , data = NewData_minus_one)
+print(Model_one)
+```
+
+## Model 2
+
+```{r,echo=FALSE}
+Model_two <- lm(bwt~age + gest +sex+ smokes +weight +rate , data=Births)
+print(Model_two)
+```
+
+```{r,echo = FALSE, fig.cap= "Figure 9: Predicted vs observed values under 2 different models", fig.align='center'}
+standard_fit <- lm(bwt~age + gest +sex+ smokes +weight +rate , data=Births)
+par(mfrow=c(1,2))
+
+predicted <- predict(fit10, newdata = Birth_test)
+
+plot(Birth_test$bwt, exp(predicted),xlab="Actual values",ylab="Predicted values",main = "Predictions under model 1")
+abline(a = 0,                                        
+       b = 1,
+       col = "red",
+       lwd = 2)
+
+plot(Birth_test$bwt, predict(standard_fit, newdata = Birth_test),xlab="Actual values",ylab="Predicted values",main = "Predictions under model 2")
+abline(a = 0,                                        
+       b = 1,
+       col = "red",
+       lwd = 2)
+```
+
+Model 1 has a slightly better fit as points on the plot lie closer to line of best fit (red line) implying that fitted values approximate birthweight from the new data set marginally better than model 2. Model 1 does a reasonable job at predicting birthweight but there are two individuals where this model under-predicts the birthweight (as can also be seen in model 2) in which these two points lie far right to line of best fit. It could potentially be that information about the covariates for these individuals were inputted incorrectly which led to this. Also, to say model 1 is better would be subjective as these two plots look fairly similar so one could argue that both these models are indistinguishable.
+
+Below are the predictions of 100 individual birthweights after being given information on the explanatory variables for each individual from the test set.
+
+```{r,echo = FALSE}
+library(dplyr)
+residuals1 <- residuals(fit10)
+exp(predicted)
+```
+
+# Summary for medical professionals
+
+After investigating the data set, we found immediately that birthweight was mildly positively correlated to gestation periods and weakly positively correlated to the pre-preganacy weight of the mother. These variables were found to be very statistically significant in the linear model and is plausible to suggest they have strong associations to birthweight.
+
+The rate of growth of child in first semester say "R" and age of the mother say "A" were found to be less significant but also found to have an important associations to birthweight of child. Despite these variables being insignificant to birthweight when they are considered in isolation, they became significant after other important variables were accounted for in the linear model, namely gestation period and pre-pregnancy weight of mother. This could suggest that (R) and (A) may have associations to gestation periods and pre-pregnancy weight as they had no association in isolation to birthweight. We would recommend further investigations led by subject matter experts to determine whether the above holds true.
