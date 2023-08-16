@@ -9,7 +9,7 @@ Data are available regarding the birthweight of 327 children, together with vari
 The data (referred to as the training data) are contained in the file BirthTrain.txt. 
 The variables are:
 - `age`  Age of mother.
-- `gest` gest Gestation period.
+- `gest` Gestation period.
 - `sex`  Sex of child.
 - `smokes` Whether the mother smoked during pregnancy, with levels ’No’, ’Light’ and ’Heavy’.
 - `weight` Pre-pregnancy weight of mother.
