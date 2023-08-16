@@ -1,2 +1,2 @@
-# 2nd-year-R-courseworkS-
+# 2nd-year-R-coursework-
 Coursework submission. Statistical modelling with R 
