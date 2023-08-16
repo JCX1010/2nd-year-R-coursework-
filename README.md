@@ -16,4 +16,4 @@ The variables are:
 - `rate` Rate of growth of child in the first trimester. 
 - `bwt` Birthweight of child.
   
-The variables ’smokes’ and ’sex’ should be treated as factors, the rest as numerical variables. Additionally, the file BirthTest.txt contains the same measurements for a further 100 individ- uals. This is to be used for testing the predictive ability of models, and should not be used in any model development. This is referred to as the test data.
+The variables ’smokes’ and ’sex’ should be treated as factors, the rest as numerical variables. Additionally, the file BirthTest.txt contains the same measurements for a further 100 individuals. This is to be used for testing the predictive ability of models, and should not be used in any model development. This is referred to as the test data.
